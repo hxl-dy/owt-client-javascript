@@ -89,7 +89,7 @@ const runSocketIOSample = function() {
             const videoOptions = {};
             videoOptions.resolution = resolution;
             conference.subscribe(stream, {
-                audio: true,
+                audio: false,
                 video: videoOptions
             }).then((
                 subscription) => {
@@ -98,7 +98,7 @@ const runSocketIOSample = function() {
             });
         }
         let $p = createResolutionButtons(stream, subscribeDifferentResolution);
-        conference.subscribe(stream)
+        conference.subscribe(stream, { audio: false })
         .then((subscription)=>{
             subscirptionLocal = subscription;
             let $video = $(`<video controls autoplay id=${stream.id} style="display:block" >this browser does not supported video tag</video>`);
