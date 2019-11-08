@@ -43,7 +43,7 @@ export class VideoSubscriptionCapabilities {
      */
     this.codecs = codecs;
     /**
-     * @member {Array.<Owt.Base.Resolution>} resolution
+     * @member {Array.<Owt.Base.Resolution>} resolutions
      * @instance
      * @memberof Owt.Conference.VideoSubscriptionCapabilities
      */
@@ -79,13 +79,13 @@ export class SubscriptionCapabilities {
   // eslint-disable-next-line require-jsdoc
   constructor(audio, video) {
     /**
-     * @member {?AudioSubscriptionCapabilities} audio
+     * @member {?Owt.Conference.AudioSubscriptionCapabilities} audio
      * @instance
      * @memberof Owt.Conference.SubscriptionCapabilities
      */
     this.audio = audio;
     /**
-     * @member {?VideoSubscriptionCapabilities} video
+     * @member {?Owt.Conference.VideoSubscriptionCapabilities} video
      * @instance
      * @memberof Owt.Conference.SubscriptionCapabilities
      */
@@ -121,7 +121,7 @@ export class AudioSubscriptionConstraints {
 export class VideoSubscriptionConstraints {
   // eslint-disable-next-line require-jsdoc
   constructor(codecs, resolution, frameRate, bitrateMultiplier,
-      keyFrameInterval) {
+      keyFrameInterval, rid) {
     /**
      * @member {?Array.<Owt.Base.VideoCodecParameters>} codecs
      * @instance
@@ -133,30 +133,37 @@ export class VideoSubscriptionConstraints {
      * @member {?Owt.Base.Resolution} resolution
      * @instance
      * @memberof Owt.Conference.VideoSubscriptionConstraints
-     * @desc Only resolutions listed in VideoSubscriptionCapabilities are allowed.
+     * @desc Only resolutions listed in Owt.Conference.VideoSubscriptionCapabilities are allowed.
      */
     this.resolution = resolution;
     /**
      * @member {?number} frameRate
      * @instance
      * @memberof Owt.Conference.VideoSubscriptionConstraints
-     * @desc Only frameRates listed in VideoSubscriptionCapabilities are allowed.
+     * @desc Only frameRates listed in Owt.Conference.VideoSubscriptionCapabilities are allowed.
      */
     this.frameRate = frameRate;
     /**
      * @member {?number} bitrateMultiplier
      * @instance
      * @memberof Owt.Conference.VideoSubscriptionConstraints
-     * @desc Only bitrateMultipliers listed in VideoSubscriptionCapabilities are allowed.
+     * @desc Only bitrateMultipliers listed in Owt.Conference.VideoSubscriptionCapabilities are allowed.
      */
     this.bitrateMultiplier = bitrateMultiplier;
     /**
      * @member {?number} keyFrameInterval
      * @instance
      * @memberof Owt.Conference.VideoSubscriptionConstraints
-     * @desc Only keyFrameIntervals listed in VideoSubscriptionCapabilities are allowed.
+     * @desc Only keyFrameIntervals listed in Owt.Conference.VideoSubscriptionCapabilities are allowed.
      */
     this.keyFrameInterval = keyFrameInterval;
+    /**
+     * @member {?number} rid
+     * @instance
+     * @memberof Owt.Conference.VideoSubscriptionConstraints
+     * @desc Restriction identifier to identify the RTP Streams within an RTP session. When rid is specified, other constraints will be ignored.
+     */
+    this.rid = rid;
   }
 }
 
@@ -169,13 +176,13 @@ export class SubscribeOptions {
   // eslint-disable-next-line require-jsdoc
   constructor(audio, video) {
     /**
-     * @member {?AudioSubscriptionConstraints} audio
+     * @member {?Owt.Conference.AudioSubscriptionConstraints} audio
      * @instance
      * @memberof Owt.Conference.SubscribeOptions
      */
     this.audio = audio;
     /**
-     * @member {?VideoSubscriptionConstraints} video
+     * @member {?Owt.Conference.VideoSubscriptionConstraints} video
      * @instance
      * @memberof Owt.Conference.SubscribeOptions
      */
@@ -250,6 +257,7 @@ export class SubscriptionUpdateOptions {
  * | Event Name      | Argument Type    | Fired when       |
  * | ----------------| ---------------- | ---------------- |
  * | ended           | Event            | Subscription is ended. |
+ * | error           | ErrorEvent       | An error occurred on the subscription. |
  * | mute            | MuteEvent        | Publication is muted. Remote side stopped sending audio and/or video data. |
  * | unmute          | MuteEvent        | Publication is unmuted. Remote side continued sending audio and/or video data. |
  *

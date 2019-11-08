@@ -227,7 +227,8 @@ window.L = L;\n\
           expand: true,
           cwd: 'dist/',
           src:['samples/**','screen-sharing-chrome-extension/**','sdk/**','ThirdpartyLicenses.txt'],
-          dest:'./'
+          dest:'./',
+          dot: true
         }]
       }
     },
@@ -236,7 +237,7 @@ window.L = L;\n\
         src: ['docs/mdfiles/index.md'],
         options: {
           destination: 'dist/docs',
-          template : 'docs/jsdoc/template',
+          template : 'node_modules/ink-docstrap/template',
           configure : 'docs/jsdoc/config.json',
           recurse: true
         }

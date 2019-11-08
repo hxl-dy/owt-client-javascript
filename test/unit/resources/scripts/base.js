@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+'use strict';
+
 import * as MediaStreamFactoryModule from '../../../../src/sdk/base/mediastream-factory.js';
 import * as StreamModule from '../../../../src/sdk/base/stream.js';
 import * as MediaFormatModule from '../../../../src/sdk/base/mediaformat.js'
@@ -164,7 +166,18 @@ describe('Unit tests for SDP utils.', function() {
   it('Reorder codecs with undefined codec list should leave SDP unchanged.', (done)=>{
     let reorderedSdp = SdpUtils.reorderCodecs(sdp, 'video');
     expect(reorderedSdp).to.equal(sdp);
-    console.log(reorderedSdp);
+    done();
+  });
+
+  it('Reorder codecs with a preferred codec name should only output spcified codec.', (done)=>{
+    let reorderedSdp = SdpUtils.reorderCodecs(sdp, 'video', ['vp9']);
+    expect(reorderedSdp.includes('m=video 9 UDP/TLS/RTP/SAVPF 98 125 108 99 107',0)).to.equal(true);
+    done();
+  });
+
+  it('Reorder codecs with preferred codec names should only output spcified codecs.', (done)=>{
+    let reorderedSdp = SdpUtils.reorderCodecs(sdp, 'video', ['vp9', 'h264']);
+    expect(reorderedSdp.includes('m=video 9 UDP/TLS/RTP/SAVPF 98 100 102 127 125 108 99 101 124 123 107',0)).to.equal(true);
     done();
   });
 });

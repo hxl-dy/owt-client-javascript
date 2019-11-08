@@ -15,7 +15,7 @@ import {OwtEvent} from '../base/event.js';
  *
  * | Event Name             | Argument Type    | Fired when       |
  * | -----------------------| ---------------- | ---------------- |
- * | activeaudioinputchange | Event            | Audio activeness of input stream(of the mixed stream) is changed. |
+ * | activeaudioinputchange | Event            | Audio activeness of input stream (of the mixed stream) is changed. |
  * | layoutchange           | Event            | Video's layout has been changed. It usually happens when a new video is mixed into the target mixed stream or an existing video has been removed from mixed stream. |
  *
  * @memberOf Owt.Conference
@@ -33,14 +33,15 @@ export class RemoteMixedStream extends StreamModule.RemoteStream {
 
     this.settings = StreamUtilsModule.convertToPublicationSettings(info.media);
 
-    this.capabilities = new StreamUtilsModule.convertToSubscriptionCapabilities(
+    this.extraCapabilities = new StreamUtilsModule
+      .convertToSubscriptionCapabilities(
         info.media);
   }
 }
 
 /**
  * @class ActiveAudioInputChangeEvent
- * @classDesc Class ActiveInputChangeEvent represents an active audio input change event.
+ * @classDesc Class ActiveAudioInputChangeEvent represents an active audio input change event.
  * @memberof Owt.Conference
  * @hideconstructor
  */

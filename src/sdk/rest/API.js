@@ -26,6 +26,8 @@
 
 // This file is borrowed from lynckia/licode with some modifications.
 
+'use strict';
+
 /*global require, CryptoJS, Buffer, url, http, https*/
 var Url = require("url");
 
@@ -59,7 +61,7 @@ OWT_REST.API = (function(OWT_REST) {
 
   function send (method, resource, body, onOK, onError) {
     var url = Url.parse(params.url + resource);
-    var ssl = (url.protocol === 'https' ? true : false);
+    var ssl = (url.protocol === 'https:' ? true : false);
     var timestamp = new Date().getTime();
     var cnounce = require('crypto').randomBytes(8).toString('hex');
     var toSign = timestamp + ',' + cnounce;
@@ -855,7 +857,7 @@ OWT_REST.API = (function(OWT_REST) {
 
   /*
      * * @callback onStreamingOutList
-     * * @param {Array.<id: string, url: string, media: Object>} streamingOutList    -The list of streaming-outs.
+     * * @param {Array.<id: string, protocol: string, url: string, parameters: Object, media: Object>} streamingOutList    -The list of streaming-outs.
      * * @param {Object} streamingOutList[x].media   -The media description of the streaming-out, which must follow the definition of object "MediaSubOptions" in section "3.3.11 Participant Starts a Subscription" in "Client-Portal Protocol.md" doc.
   */
   /**
@@ -885,7 +887,9 @@ OWT_REST.API = (function(OWT_REST) {
      * * @callback onStartingStreamingOutOK
      * * @param {Object} streamingOutInfo              -The object containing the information of the external streaming-out.
      * * @param {string} streamingOutInfo.id         -The streaming-out ID.
+     * * @param {string} streamingOutInfo.protocol   -The streaming-out protocol.
      * * @param {string} streamingOutInfo.url        -The URL of the target streaming-out.
+     * * @param {string} streamingOutInfo.parameters -The connection parameters of the target streaming-out.
      * * @param {Object} streamingOutInfo.media      -The media description of the streaming-out, which must follow the definition of object "MediaSubOptions" in section "3.3.11 Participant Starts a Subscription" in "Client-Portal Protocol.md" doc.
   */
   /**
@@ -893,13 +897,26 @@ OWT_REST.API = (function(OWT_REST) {
      * @desc This function starts a streaming-out to the specified room.
      * @memberOf OWT_REST.API
      * @param {string} room                          -Room ID.
+     * @param {string} protocol                      -Streaming-out protocol.
      * @param {string} url                           -The URL of the target streaming-out.
+     * @param {Object} parameters                    -The connection parameters of the target streaming-out.
+     * @param {string} parameters.method             -The HTTP(s) method to create file on streaming servers, 'PUT' or 'POST, 'PUT' by default.
+     * @param {string} parameters.hlsTime            -The hls segment length in seconds, 2 by default, required in case protocol is 'hls'.
+     * @param {string} parameters.hlsListSize        -The maximum number of playlist entries, 5 by default, required in case protocol is 'hls'.
+     * @param {string} parameters.dashSegDuration    -The segment length in seconds, 2 by default, required in case protocol is 'dash'.
+     * @param {string} parameters.dashWindowSize     -The maximum number of segments kept in the manifest, 5 by default, required in case protocol is 'dash'.
      * @param {Object} media                         -The media description of the streaming-out, which must follow the definition of object "MediaSubOptions" in section "3.3.11 Participant Starts a Subscription" in "Client-Portal Protocol.md" doc.
      * @param {onStartingStreamingOutOK} callback    -Callback function on success
      * @param {function} callbackError               -Callback function on error
      * @example
   var roomId = '51c10d86909ad1f939000001';
-  var url = 'rtmp://USER:PASS@localhost:1935/live';
+  var protocol = 'hls'
+  var url = 'https://USER:PASS@localhost:443/live.m3u8';
+  var parameters = {
+    method: 'PUT',
+    hlsTime: 2,
+    hlsListSize: 5
+  },
   var media = {
     audio: {
       from: '7652773772543651'
@@ -911,16 +928,18 @@ OWT_REST.API = (function(OWT_REST) {
       }
     }
   };
-  OWT_REST.API.startStreamingOut(roomId, url, media, function(streamingOut) {
+  OWT_REST.API.startStreamingOut(roomId, protocol, url, parameters, media, function(streamingOut) {
     console.log('Streaming-out:', streamingOut);
   }, function(status, error) {
     // HTTP status and error
     console.log(status, error);
   });
      */
-  var startStreamingOut = function(room, url, media, callback, callbackError) {
+  var startStreamingOut = function(room, protocol, url, parameters, media, callback, callbackError) {
     var options = {
+      protocol: protocol,
       url: url,
+      parameters: parameters,
       media: media
     };
 
@@ -1292,6 +1311,113 @@ OWT_REST.API = (function(OWT_REST) {
     }, callbackError);
   };
 
+  /*
+     * * @callback onAnalyticsList
+     * * @param {Array.<{id: string, analytics: Object, media: Object}>} analyticsList            -The analytics list.
+     * * @param {Object} analyticsList[x].analytics            -The information of the analytics.
+     * * @param {string} analyticsList[x].analytics.algorithm  -The algorithm of the analytics.
+     * * @param {Object} analyticsList[x].media                -The media description of the analytics, which must follow the definition of object "MediaSubOptions" in section "3.3.11 Participant Starts a Subscription" in "Client-Portal Protocol.md" doc.
+  */
+  /**
+     * @function getAnalytics
+     * @desc This function gets the all the ongoing analytics in the specified room.
+     * @memberOf OWT_REST.API
+     * @param {string} room                          -Room ID.
+     * @param {function} callback                    -Callback function on success
+     * @param {function} callbackError               -Callback function on error
+     * @example
+  var roomId = '51c10d86909ad1f939000001';
+  OWT_REST.API.getAnalytics(roomId, function(analyticsList) {
+    console.log('Analytics:', analyticsList);
+  }, function(status, error) {
+    // HTTP status and error
+    console.log(status, error);
+  });
+     */
+  var getAnalytics = function(room, callback, callbackError) {
+    send('GET', 'rooms/' + room + '/analytics/', undefined, function(analyticsList) {
+      var result = JSON.parse(analyticsList);
+      callback(result);
+    }, callbackError);
+  };
+
+  /*
+     * * @callback onStartingAnalyticsOK
+     * * @param {Object} analyticsInfo               -The object containing the information of the server-side analytics.
+     * * @param {string} analyticsInfo.id            -The analytics ID.
+     * * @param {Object} analyticsInfo.analytics     -The information of the analytics.
+     * * @param {string} analyticsInfo.analytics.algorithm  -The algorithm of the analytics.
+     * * @param {Object} analyticsInfo.media         -The media description of the analytics, which must follow the definition of object "MediaSubOptions" in section "3.3.11 Participant Starts a Subscription" in "Client-Portal Protocol.md" doc.
+  */
+  /**
+     * @function startAnalytics
+     * @desc This function starts a analytics in the specified room.
+     * @memberOf OWT_REST.API
+     * @param {string} room                          -Room ID.
+     * @param {string} algorithm                     -The algorithm ID.
+     * @param {Object} media                         -The media description of the analytics, which must follow the definition of object "MediaSubOptions" in section "3.3.11 Participant Starts a Subscription" in "Client-Portal Protocol.md" doc.
+     * @param {onStartingAnalyticsOK} callback       -Callback function on success
+     * @param {function} callbackError               -Callback function on error
+     * @example
+  var roomId = '51c10d86909ad1f939000001';
+  var algorithm = 'b849f44bee074b08bf3e627f3fc927c7'; //guid in plugin.cfg
+  var media = {
+    audio: {
+      from: '7652773772543651'
+    },
+    video: {
+      from: '7652773772543651',
+      parameters: {
+        keyFrameInterval: 2
+      }
+    }
+  };
+  OWT_REST.API.startAnalytics(roomId, algorithm, media, function(analytics) {
+    console.log('analytics:', analytics);
+  }, function(status, error) {
+    // HTTP status and error
+    console.log(status, error);
+  });
+     */
+  var startAnalytics = function(room, algorithm, media, callback, callbackError) {
+    var options = {
+      algorithm: algorithm,
+      media: media
+    };
+
+    send('POST', 'rooms/' + room + '/analytics/', options, function(analyticsRtn) {
+      var result = JSON.parse(analyticsRtn);
+      callback(result);
+    }, callbackError);
+  };
+
+  /**
+     * @function stopAnalytics
+     * @desc This function stops the specified analytics in the specified room.
+     * @memberOf OWT_REST.API
+     * @param {string} room                          -Room ID
+     * @param {string} id                            -Analytics ID
+     * @param {function} callback                    -Callback function on success
+     * @param {function} callbackError               -Callback function on error
+     * @example
+  var roomId = '51c10d86909ad1f939000001';
+  var id = '878889273471677';
+  OWT_REST.API.stopAnalytics(roomId, id, function(result) {
+    console.log('Analytics:', id, 'in room:', roomId, 'stopped');
+  }, function(status, error) {
+    // HTTP status and error
+    console.log(status, error);
+  });
+     */
+  var stopAnalytics = function(room, id, callback, callbackError) {
+    if (typeof id !== 'string' || id.trim().length === 0) {
+      return callbackError('Invalid analytics ID');
+    }
+    send('DELETE', 'rooms/' + room + '/analytics/' + id, undefined, function(result) {
+      callback(result);
+    }, callbackError);
+  };
+
   /**
      * @function createToken
      * @desc This function creates a new token when a new participant to a room needs to be added.
@@ -1362,6 +1488,11 @@ OWT_REST.API = (function(OWT_REST) {
     startRecording: startRecording,
     updateRecording: updateRecording,
     stopRecording: stopRecording,
+
+    //Analytics management
+    getAnalytics: getAnalytics,
+    startAnalytics: startAnalytics,
+    stopAnalytics: stopAnalytics,
 
     //Sip calls management
     getSipCalls: getSipCalls,

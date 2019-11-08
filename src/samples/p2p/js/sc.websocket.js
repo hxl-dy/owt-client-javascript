@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+'use strict';
 /**
  * @class SignalingChannel
  * @classDesc Signaling module for Open WebRTC Toolkit P2P chat
@@ -12,7 +13,7 @@ function SignalingChannel() {
   this.onServerDisconnected = null;
 
   var clientType = 'Web';
-  var clientVersion = '4.1';
+  var clientVersion = '4.3';
 
   var wsServer = null;
 
@@ -35,7 +36,7 @@ function SignalingChannel() {
       to: targetId
     };
     return new Promise((resolve, reject) => {
-      wsServer.emit('ics-message', data, function(err) {
+      wsServer.emit('owt-message', data, function(err) {
         if (err)
           reject(err);
         else
@@ -113,8 +114,8 @@ function SignalingChannel() {
       }
     });
 
-    wsServer.on('ics-message', function(data) {
-      console.info('Received woogeen message.');
+    wsServer.on('owt-message', function(data) {
+      console.info('Received owt message.');
       if (self.onMessage)
         self.onMessage(data.from, data.data);
     });

@@ -5,7 +5,7 @@
 /* global navigator, window */
 
 'use strict';
-const sdkVersion = '4.1';
+const sdkVersion = '4.3';
 
 // eslint-disable-next-line require-jsdoc
 export function isFirefox() {
@@ -120,7 +120,7 @@ export function sysInfo() {
   }
   info.capabilities = {
     continualIceGathering: false,
-    unifiedPlan: false,
+    unifiedPlan: true,
     streamRemovable: info.runtime.name !== 'Firefox',
   };
   return info;

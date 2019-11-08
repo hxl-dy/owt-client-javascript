@@ -20,8 +20,9 @@ import * as SdpUtils from '../base/sdputils.js';
 /**
  * @class P2PPeerConnectionChannelEvent
  * @desc Event for Stream.
- * @private.
- */
+ * @memberOf Owt.P2P
+ * @private
+ * */
 export class P2PPeerConnectionChannelEvent extends Event {
   /* eslint-disable-next-line require-jsdoc */
   constructor(init) {
@@ -48,17 +49,13 @@ const SignalingType = {
   UA: 'chat-ua',
 };
 
-const offerOptions = {
-  'offerToReceiveAudio': true,
-  'offerToReceiveVideo': true,
-};
-
 const sysInfo = Utils.sysInfo();
 
 /**
  * @class P2PPeerConnectionChannel
  * @desc A P2PPeerConnectionChannel handles all interactions between this endpoint and a remote endpoint.
- * @private.
+ * @memberOf Owt.P2P
+ * @private
  */
 class P2PPeerConnectionChannel extends EventDispatcher {
   // |signaling| is an object has a method |sendSignalingMessage|.
@@ -83,7 +80,6 @@ class P2PPeerConnectionChannel extends EventDispatcher {
     this._publishingStreamTracks = new Map(); // Key is MediaStream's ID, value is an array of the ID of its MediaStreamTracks that haven't been acked.
     this._publishedStreamTracks = new Map(); // Key is MediaStream's ID, value is an array of the ID of its MediaStreamTracks that haven't been removed.
     this._isNegotiationNeeded = false;
-    this._negotiating = false;
     this._remoteSideSupportsRemoveStream = true;
     this._remoteSideSupportsPlanB = true;
     this._remoteSideSupportsUnifiedPlan = true;
@@ -102,6 +98,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   /**
    * @function publish
    * @desc Publish a stream to the remote endpoint.
+   * @private
    */
   publish(stream) {
     if (!(stream instanceof StreamModule.LocalStream)) {
@@ -122,7 +119,10 @@ class P2PPeerConnectionChannel extends EventDispatcher {
       this._sendStreamInfo(stream)]).then(() => {
       return new Promise((resolve, reject) => {
         // Replace |addStream| with PeerConnection.addTrack when all browsers are ready.
-        this._pc.addStream(stream.mediaStream);
+        for (const track of stream.mediaStream.getTracks()) {
+          this._pc.addTrack(track, stream.mediaStream);
+        }
+        this._onNegotiationneeded();
         this._publishingStreams.push(stream);
         const trackIds = Array.from(stream.mediaStream.getTracks(),
             (track) => track.id);
@@ -132,9 +132,6 @@ class P2PPeerConnectionChannel extends EventDispatcher {
           resolve: resolve,
           reject: reject,
         });
-        if (!this._dataChannels.has(DataChannelLabel.MESSAGE)) {
-          this._createDataChannel(DataChannelLabel.MESSAGE);
-        }
       });
     });
   }
@@ -142,6 +139,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   /**
    * @function send
    * @desc Send a message to the remote endpoint.
+   * @private
    */
   send(message) {
     if (!(typeof message === 'string')) {
@@ -182,6 +180,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   /**
    * @function stop
    * @desc Stop the connection with remote endpoint.
+   * @private
    */
   stop() {
     this._stop(undefined, true);
@@ -190,6 +189,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   /**
    * @function getStats
    * @desc Get stats for a specific MediaStream.
+   * @private
    */
   getStats(mediaStream) {
     if (this._pc) {
@@ -222,6 +222,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   /**
    * @function onMessage
    * @desc This method is called by P2PClient when there is new signaling message arrived.
+   * @private
    */
   onMessage(message) {
     this._SignalingMesssageHandler(message);
@@ -264,9 +265,6 @@ class P2PPeerConnectionChannel extends EventDispatcher {
       case SignalingType.CLOSED:
         this._chatClosedHandler(message.data);
         break;
-      case SignalingType.NEGOTIATION_NEEDED:
-        this._doNegotiate();
-        break;
       default:
         Logger.error('Invalid signaling message received. Type: ' +
             message.type);
@@ -276,6 +274,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   /**
    * @function _tracksAddedHandler
    * @desc Handle track added event from remote side.
+   * @private
    */
   _tracksAddedHandler(ids) {
     // Currently, |ids| contains all track IDs of a MediaStream. Following algorithm also handles |ids| is a part of a MediaStream's tracks.
@@ -333,6 +332,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   /**
    * @function _tracksRemovedHandler
    * @desc Handle track removed event from remote side.
+   * @private
    */
   _tracksRemovedHandler(ids) {
     // Currently, |ids| contains all track IDs of a MediaStream. Following algorithm also handles |ids| is a part of a MediaStream's tracks.
@@ -351,6 +351,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   /**
    * @function _dataReceivedHandler
    * @desc Handle data received event from remote side.
+   * @private
    */
   _dataReceivedHandler(id) {
     if (!this._sendDataPromises.has(id)) {
@@ -364,6 +365,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   /**
    * @function _sdpHandler
    * @desc Handle SDP received event from remote side.
+   * @private
    */
   _sdpHandler(sdp) {
     if (sdp.type === 'offer') {
@@ -378,6 +380,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   /**
    * @function _trackSourcesHandler
    * @desc Received track source information from remote side.
+   * @private
    */
   _trackSourcesHandler(data) {
     for (const info of data) {
@@ -388,6 +391,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   /**
    * @function _streamInfoHandler
    * @desc Received stream information from remote side.
+   * @private
    */
   _streamInfoHandler(data) {
     if (!data) {
@@ -406,6 +410,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   /**
    * @function _chatClosedHandler
    * @desc Received chat closed event from remote side.
+   * @private
    */
   _chatClosedHandler(data) {
     this._disposed = true;
@@ -538,12 +543,14 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   }
 
   _onNegotiationneeded() {
+    // This is intented to be executed when onnegotiationneeded event is fired.
+    // However, onnegotiationneeded may fire mutiple times when more than one
+    // track is added/removed. So we manually execute this function after
+    // adding/removing track and creating data channel.
     Logger.debug('On negotiation needed.');
 
-    if (this._pc.signalingState === 'stable' && this._negotiating === false) {
-      this._negotiating = true;
+    if (this._pc.signalingState === 'stable') {
       this._doNegotiate();
-      this._isNegotiationNeeded = false;
     } else {
       this._isNegotiationNeeded = true;
     }
@@ -667,9 +674,6 @@ class P2PPeerConnectionChannel extends EventDispatcher {
         this._onRemoteTrackAdded.apply(this, [event]);
       };
     }
-    this._pc.onnegotiationneeded = (event)=>{
-      this._onNegotiationneeded.apply(this, [event]);
-    };
     this._pc.onicecandidate = (event) => {
       this._onLocalIceCandidate.apply(this, [event]);
     };
@@ -709,6 +713,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   }
 
   _drainPendingStreams() {
+    let negotiationNeeded = false;
     Logger.debug('Draining pending streams.');
     if (this._pc && this._pc.signalingState === 'stable') {
       Logger.debug('Peer connection is ready for draining pending streams.');
@@ -721,7 +726,10 @@ class P2PPeerConnectionChannel extends EventDispatcher {
         if (!stream.mediaStream) {
           continue;
         }
-        this._pc.addStream(stream.mediaStream);
+        for (const track of stream.mediaStream.getTracks()) {
+          this._pc.addTrack(track, stream.mediaStream);
+          negotiationNeeded = true;
+        }
         Logger.debug('Added stream to peer connection.');
         this._publishingStreams.push(stream);
       }
@@ -731,12 +739,16 @@ class P2PPeerConnectionChannel extends EventDispatcher {
           continue;
         }
         this._pc.removeStream(this._pendingUnpublishStreams[j].mediaStream);
+        negotiationNeeded = true;
         this._unpublishPromises.get(
             this._pendingUnpublishStreams[j].mediaStream.id).resolve();
         this._publishedStreams.delete(this._pendingUnpublishStreams[j]);
         Logger.debug('Remove stream.');
       }
       this._pendingUnpublishStreams.length = 0;
+    }
+    if (negotiationNeeded) {
+      this._onNegotiationneeded();
     }
   }
 
@@ -762,7 +774,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
         dc.send(JSON.stringify(this._pendingMessages[i]));
       }
       this._pendingMessages.length = 0;
-    } else if (this._pc&&!dc) {
+    } else if (this._pc && !dc) {
       this._createDataChannel(DataChannelLabel.MESSAGE);
     }
   }
@@ -822,11 +834,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
   }
 
   _doNegotiate() {
-    if (this._isCaller) {
-      this._createAndSendOffer();
-    } else {
-      this._sendSignalingMessage(SignalingType.NEGOTIATION_NEEDED);
-    }
+    this._createAndSendOffer();
   }
 
   _setCodecOrder(sdp) {
@@ -871,12 +879,14 @@ class P2PPeerConnectionChannel extends EventDispatcher {
     this._isNegotiationNeeded = false;
     this._isCaller = true;
     let localDesc;
-    this._pc.createOffer(offerOptions).then((desc) => {
+    this._pc.createOffer().then((desc) => {
       desc.sdp = this._setRtpReceiverOptions(desc.sdp);
       localDesc = desc;
-      return this._pc.setLocalDescription(desc);
-    }).then(() => {
-      return this._sendSdp(localDesc);
+      if(this._pc.signalingState==='stable'){
+        return this._pc.setLocalDescription(desc).then(()=>{
+          return this._sendSdp(localDesc);
+        });
+      }
     }).catch((e) => {
       Logger.error(e.message + ' Please check your codec settings.');
       const error = new ErrorModule.P2PError(ErrorModule.errors.P2P_WEBRTC_SDP,
@@ -893,6 +903,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
     this._pc.createAnswer().then((desc) => {
       desc.sdp = this._setRtpReceiverOptions(desc.sdp);
       localDesc=desc;
+      this._logCurrentAndPendingLocalDescription();
       return this._pc.setLocalDescription(desc);
     }).then(()=>{
       return this._sendSdp(localDesc);
@@ -904,6 +915,10 @@ class P2PPeerConnectionChannel extends EventDispatcher {
     });
   }
 
+  _logCurrentAndPendingLocalDescription(){
+    Logger.info('Current description: '+this._pc.currentLocalDescription);
+    Logger.info('Pending description: '+this._pc.pendingLocalDescription);
+  }
 
   _getAndDeleteTrackSourceInfo(tracks) {
     if (tracks.length > 0) {
@@ -955,6 +970,7 @@ class P2PPeerConnectionChannel extends EventDispatcher {
     const dc = this._pc.createDataChannel(label);
     this._bindEventsToDataChannel(dc);
     this._dataChannels.set(DataChannelLabel.MESSAGE, dc);
+    this._onNegotiationneeded();
   }
 
   _bindEventsToDataChannel(dc) {
@@ -970,6 +986,22 @@ class P2PPeerConnectionChannel extends EventDispatcher {
     dc.onerror = (event) => {
       Logger.debug('Data Channel Error:', error);
     };
+  }
+
+  // Returns all MediaStreams it belongs to.
+  _getStreamByTrack(mediaStreamTrack) {
+    const streams = [];
+    for (const [id, info] of this._remoteStreamInfo) {
+      if (!info.stream || !info.stream.mediaStream) {
+        continue;
+      }
+      for (const track of info.stream.mediaStream.getTracks()) {
+        if (mediaStreamTrack === track) {
+          streams.push(info.stream.mediaStream);
+        }
+      }
+    }
+    return streams;
   }
 
   _areAllTracksEnded(mediaStream) {
@@ -1061,9 +1093,12 @@ class P2PPeerConnectionChannel extends EventDispatcher {
           });
           if (this._isUnifiedPlan()) {
             for (const track of info.mediaStream.getTracks()) {
-              track.addEventListener('ended', () => {
-                if (self._areAllTracksEnded(info.mediaStream)) {
-                  self._onRemoteStreamRemoved(info.stream);
+              track.addEventListener('ended', (event) => {
+                const mediaStreams = this._getStreamByTrack(event.target);
+                for (const mediaStream of mediaStreams) {
+                  if (this._areAllTracksEnded(mediaStream)) {
+                    this._onRemoteStreamRemoved(mediaStream);
+                  }
                 }
               });
             }

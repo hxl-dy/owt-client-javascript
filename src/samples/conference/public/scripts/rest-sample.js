@@ -4,6 +4,7 @@
 
 // REST samples. It sends HTTP requests to sample server, and sample server sends requests to conference server.
 // Both this file and sample server are samples.
+'use strict';
 var send = function (method, path, body, onRes, host) {
     var req = new XMLHttpRequest()
     req.onreadystatechange = function () {
@@ -26,8 +27,8 @@ var generateUrl = function(host, path) {
     if (host !== undefined) {
         url = host + path;  // Use the host user set.
     }else {
-        let index = document.URL.lastIndexOf('\/');
-        url = document.URL.substring(0, index) + path;  // Get the string before last '/'.
+        let u = new URL(document.URL);
+        url = u.origin + path;  // Get the string before last '/'.
     }
     return url;
 }
