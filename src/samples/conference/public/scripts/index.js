@@ -105,6 +105,7 @@ const runSocketIOSample = function() {
            $video.get(0).srcObject = stream.mediaStream;
            $p.append($video);
 
+            console.log(stream.mediaStream.getVideoTracks()[0]);
             setInterval(async () => {
                 // https://testrtc.com/webrtc-internals-parameters/
                 // https://www.w3.org/TR/webrtc-stats/
