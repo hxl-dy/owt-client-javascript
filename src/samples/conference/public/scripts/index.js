@@ -104,6 +104,19 @@ const runSocketIOSample = function() {
             let $video = $(`<video controls autoplay id=${stream.id} style="display:block" >this browser does not supported video tag</video>`);
            $video.get(0).srcObject = stream.mediaStream;
            $p.append($video);
+
+            setInterval(async () => {
+                // https://testrtc.com/webrtc-internals-parameters/
+                // https://www.w3.org/TR/webrtc-stats/
+                // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/getStats
+                // https://software.intel.com/sites/products/documentation/webrtc/js/Owt.Conference.Subscription.html#getStats__anchor
+                (await subscription.getStats()).forEach(stat => {
+                //    stat.type === 'track' &&
+                    stat.type === 'inbound-rtp' &&
+                    console.log(stat);
+                });
+            }, 5000);
+
         }, (err)=>{ console.log('subscribe failed', err);
         });
         stream.addEventListener('ended', () => {
